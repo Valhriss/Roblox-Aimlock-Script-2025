@@ -1,0 +1,99 @@
+-- Aimlock Script (Direct Headshot)
+
+-- Settings
+local aimlock_enabled = false
+local aimlock_key = "RightMouseButton"
+local aimlock_smoothness = 0.05
+local aimlock_fov = 100
+local aimlock_max_distance = 1000
+
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+
+-- Get local player
+local local_player = Players.LocalPlayer
+
+-- Function to calculate distance between two positions
+local function calculate_distance(pos1, pos2)
+    return math.sqrt((pos1.X - pos2.X)^2 + (pos1.Y - pos2.Y)^2 + (pos1.Z - pos2.Z)^2)
+end
+
+-- Aimlock function
+local function aimlock(target)
+    if aimlock_enabled then
+        local camera = Workspace.CurrentCamera
+        local character = target.Character
+        if character then
+            local head = character:FindFirstChild("Head")
+            if head then
+                local target_position = head.Position
+                local camera_position = camera.CFrame.Position
+                local direction = (target_position - camera_position).Unit
+                local new_camera_cframe = CFrame.new(camera_position, target_position)
+                camera.CFrame = camera.CFrame:Lerp(new_camera_cframe, aimlock_smoothness)
+            end
+        end
+    end
+end
+
+-- Function to check if a player is dead
+local function is_player_dead(player)
+    local character = player.Character
+    if character then
+        local humanoid = character:FindFirstChild("Humanoid")
+        if humanoid then
+            return humanoid.Health <= 0
+        end
+    end
+    return true
+end
+
+-- Function to get the nearest player
+local function get_nearest_player()
+    local nearest_player = nil
+    local nearest_distance = aimlock_fov
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= local_player and not is_player_dead(player) then
+            local target_character = player.Character
+            if target_character then
+                local target_head = target_character:FindFirstChild("Head")
+                if target_head then
+                    local distance = calculate_distance(Workspace.CurrentCamera.CFrame.Position, target_head.Position)
+                    if distance < nearest_distance and distance <= aimlock_max_distance then
+                        nearest_distance = distance
+                        nearest_player = player
+                    end
+                end
+            end
+        end
+    end
+    return nearest_player
+end
+
+-- Connect to render-stepped event
+RunService.RenderStepped:Connect(function()
+    if aimlock_enabled then
+        local nearest_player = get_nearest_player()
+        if nearest_player then
+            aimlock(nearest_player)
+        end
+    end
+end)
+
+-- Keybind to toggle aimlock
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        aimlock_enabled = not aimlock_enabled
+        print("Aimlock " .. (aimlock_enabled and "enabled" or "disabled"))
+    end
+end)
+
+-- Display injection message
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "Aimlock Script Injected";
+    Text = "Script Made By Valhriss";
+    Duration = 5;
+})
